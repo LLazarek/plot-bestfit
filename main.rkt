@@ -7,7 +7,10 @@
          linear-fit-params linear-fit
          exp-fit-params exp-fit
          log-fit-params log-fit
-         power-fit-params power-fit)
+         power-fit-params power-fit
+
+         Fit try-fits best-fit
+         fit->string fit->fun)
 
 (require plot/no-gui math/flonum)
 
@@ -21,6 +24,7 @@
        (Values renderer2d renderer2d renderer2d)))
 
 (define-type Fitter (-> Flonums Flonums (-> Real Real)))
+(define-type Parameterizer (-> Real Real (-> Real Real)))
 
 
 (: graph/gen : (-> (Listof Nonnegative-Flonum) (Listof Nonnegative-Flonum)
@@ -59,11 +63,15 @@
        len))
   (values offset slope))
 
+(: linear-fit/with-params : Parameterizer)
+(define (linear-fit/with-params offset slope)
+  (lambda ([x : Real]) (+ offset (* slope (fl x)))))
+
 (: linear-fit : Fitter)
 (define (linear-fit pts-x pts-y)
   (define-values [a b]
     (linear-fit-params pts-x pts-y))
-  (lambda ([x : Real]) (+ a (* b (fl x)))))
+  (linear-fit/with-params a b))
 
 (: graph/linear : Grapher)
 (define (graph/linear pts-x pts-y [error #f])
@@ -90,11 +98,15 @@
                ΣyΣx^2y-Σxy^2))
   (values (exp a) b))
 
+(: exp-fit/with-params : Parameterizer)
+(define (exp-fit/with-params coeff exp-coeff)
+  (lambda ([x : Real]) (* coeff (exp (* exp-coeff (fl x))))))
+
 (: exp-fit : Fitter)
 (define (exp-fit pts-x pts-y)
   (define-values [A B]
     (exp-fit-params pts-x pts-y))
-  (lambda ([x : Real]) (* A (exp (* B (fl x))))))
+  (exp-fit/with-params A B))
 
 (: graph/exponential : Grapher)
 (define (graph/exponential pts-x pts-y [error #f])
@@ -126,16 +138,20 @@
 
   (values a b))
 
+(: log-fit/with-params : Parameterizer)
+(define (log-fit/with-params offset coeff)
+  (lambda ([x : Real])
+    (define fx (fl x))
+    (if (nnn? fx)
+        (+ offset (* coeff (log fx)))
+        +nan.0)))
+
 (: log-fit : Fitter)
 (define-predicate nnn? Nonnegative-Flonum)
 (define (log-fit pts-x pts-y)
   (define-values [a b]
     (log-fit-params pts-x pts-y))
-  (lambda ([x : Real])
-    (define fx (fl x))
-    (if (nnn? fx)
-        (+ a (* b (log fx)))
-        +nan.0)))
+  (log-fit/with-params a b))
 
 (: graph/log : Grapher)
 (define (graph/log pts-x pts-y [error #f])
@@ -160,17 +176,100 @@
   (define a (/ (- Σlny (* b Σlnx)) n))
   (values a b))
 
+(: power-fit/with-params : Parameterizer)
+(define (power-fit/with-params coeff exp-coeff)
+  (lambda ([x : Real])
+    (define fx (fl x))
+    (if (pn? fx)
+        (* (exp coeff) (expt fx exp-coeff))
+        +nan.0)))
+
 (: power-fit : Fitter)
 (define-predicate pn? Positive-Flonum)
 (define (power-fit pts-x pts-y)
   (define-values [a b]
     (power-fit-params pts-x pts-y))
-  (lambda ([x : Real])
-    (define fx (fl x))
-    (if (pn? fx)
-        (* (exp a) (expt fx b))
-        +nan.0)))
+  (power-fit/with-params a b))
 
 (: graph/power : Grapher)
 (define (graph/power pts-x pts-y [error #f])
   (graph/gen pts-x pts-y error power-fit))
+
+
+;; --------------------
+;; | Exploratory fit
+;; Try every fit function, returning a summary or just the best
+
+;; For now, just always use SSE for error
+;; ;; f(x) = offset + slope*x
+;; (define-struct LinearFit ([offset : Real] [slope : Real] [sse : Real]))
+;; ;; f(x) = coeff*e^(exp-coeff*x)
+;; (define-struct ExpFit ([coeff : Real] [exp-coeff : Real] [sse : Real]))
+;; ;; f(x) = offset + coeff*log(x)
+;; (define-struct LogFit ([offset : Real] [coeff : Real] [sse : Real]))
+;; ;; f(x) = (e^coeff)*(x^exp-coeff)
+;; (define-struct PowerFit ([coeff : Real] [exp-coeff : Real] [sse : Real]))
+
+(: point-error : (-> Real Real Real))
+(define (point-error actual expected)
+  (expt (- expected actual) 2))
+
+(: sse : (-> Flonums Flonums (-> Real Real) Real))
+(define (sse pts-x pts-y f)
+  (foldl + 0
+         (map point-error
+              (map f pts-x)
+              pts-y)))
+
+(define-struct Fit ([a : Real] [b : Real] [sse : Real] [type : Symbol]))
+
+(: try-fits : (-> Flonums Flonums (Listof Fit)))
+(define (try-fits pts-x pts-y)
+  (define fits-to-try `((linear ,linear-fit-params ,linear-fit/with-params)
+                        (exp ,exp-fit-params ,exp-fit/with-params)
+                        (log ,log-fit-params ,log-fit/with-params)
+                        (power ,power-fit-params ,power-fit/with-params)))
+  (for/fold ([fits : (Listof Fit) empty])
+      ([fit-to-try fits-to-try])
+    (let*-values ([(type) (first fit-to-try)]
+                  [(get-params) (second fit-to-try)]
+                  [(fit/with-params) (third fit-to-try)]
+                  [(param-a param-b) (get-params pts-x pts-y)]
+                  [(fun) (fit/with-params param-a param-b)]
+                  [(sse) (sse pts-x pts-y fun)])
+      (cons (make-Fit param-a param-b sse type) fits))))
+
+(: fit-format-str : (-> Symbol String))
+(define (fit-format-str type)
+  (string-append
+   (match type
+     ('linear "~a + ~a*x")
+     ('exp "~a*e^(~a*x)")
+     ('log "~a + ~a*log(x)")
+     ('power "(e^~a)*(x^~a)")
+     (_ "unknown with a=~a, b=~a"))
+   " (SSE: ~a)"))
+(: fit->string : (-> Fit String))
+(define (fit->string fitsum)
+  (format (fit-format-str (Fit-type fitsum))
+          (Fit-a fitsum)
+          (Fit-b fitsum)
+          (Fit-sse fitsum)))
+
+(: fit->fun : (-> Fit (-> Real Real)))
+(define (fit->fun fitsum)
+  (define fit/with-params (match (Fit-type fitsum)
+                            ('linear linear-fit/with-params)
+                            ('exp exp-fit/with-params)
+                            ('log log-fit/with-params)
+                            ('power power-fit/with-params)))
+  (fit/with-params (Fit-a fitsum) (Fit-b fitsum)))
+
+(: best-fit : (-> Flonums Flonums Fit))
+(define (best-fit pts-x pts-y)
+  (define summaries (try-fits pts-x pts-y))
+  (for/fold ([best-so-far (first summaries)])
+            ([fit summaries])
+    (if (< (Fit-sse fit) (Fit-sse best-so-far))
+        fit
+        best-so-far)))
