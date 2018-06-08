@@ -32,14 +32,19 @@
   (flsqrt sses/summed))
 
 (define (gradient-descent [xs : Flonums]
-                          [ys : Flonums]) : (values Flonum Flonum Flonum)
+                          [ys : Flonums]
+                          [maxiters : Positive-Integer 1000000]
+                          #:fix-threshold
+                          [fix-threshold : Positive-Real 0.0000001])
+  : (values Flonum Flonum Flonum)
   (define alpha 0.0005)
   (define m (length xs))
 
-  (let loop ([theta-0 0.5]
+  (let loop ([iter 0]
+             [last-err +inf.0]
+             [theta-0 0.5]
              [theta-1 0.5]
-             [theta-2 0.5]
-             [last-err +inf.0])
+             [theta-2 0.5])
     (define (h-theta [x : Flonum]) : Flonum
       (+ (* theta-0 (expt x 0))
          (* theta-1 (expt x 1))
@@ -71,9 +76,9 @@
     (match-define (list zipped _ _) (zip (map h-theta xs) ys))
     (define err (apply sse zipped))
     (assert (< err last-err))
-    (if (< (- last-err err) 0.0000001)
+    (if (or (< (- last-err err) fix-threshold) (>= iter maxiters))
         (values theta-0 theta-1 theta-2)
-        (loop theta-0/new theta-1/new theta-2/new err))))
+        (loop (+ iter 1) err theta-0/new theta-1/new theta-2/new))))
 
 (module+ test
   (require typed/rackunit)
@@ -104,5 +109,4 @@
                        (gradient-descent xs ys*2))
   (check-~ double-sq/zero-mult 0 ~-threshold)
   (check-~ double-sq/one-mult 0 ~-threshold)
-  (check-~ double-sq/two-mult 2 ~-threshold)
-  )
+  (check-~ double-sq/two-mult 2 ~-threshold))
