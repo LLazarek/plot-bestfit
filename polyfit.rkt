@@ -35,9 +35,9 @@
                           [ys : Flonums]
                           [maxiters : Positive-Integer 1000000]
                           #:fix-threshold
-                          [fix-threshold : Positive-Real 0.0000001])
+                          [fix-threshold : Positive-Real 0.0000001]
+                          #:alpha [alpha : Positive-Real 0.0005])
   : (values Flonum Flonum Flonum)
-  (define alpha 0.0005)
   (define m (length xs))
 
   (let loop ([iter 0]
