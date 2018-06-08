@@ -31,12 +31,12 @@
   (define sses/summed (flsum sses))
   (flsqrt sses/summed))
 
-(define (gradient-descent [xs : Flonums]
-                          [ys : Flonums]
-                          [maxiters : Positive-Integer 1000000]
-                          #:fix-threshold
-                          [fix-threshold : Positive-Real 0.0000001]
-                          #:alpha [alpha : Positive-Real 0.0005])
+(define (gradient-descent/degree-2 [xs : Flonums]
+                                   [ys : Flonums]
+                                   [maxiters : Positive-Integer 1000000]
+                                   #:fix-threshold
+                                   [fix-threshold : Positive-Real 0.0000001]
+                                   #:alpha [alpha : Positive-Real 0.0005])
   : (values Flonum Flonum Flonum)
   (define m (length xs))
 
@@ -80,6 +80,44 @@
         (values theta-0 theta-1 theta-2)
         (loop (+ iter 1) err theta-0/new theta-1/new theta-2/new))))
 
+
+(define (gradient-descent [xs : Flonums]
+                          [ys : Flonums]
+                          [degree : Nonnegative-Integer]
+                          [maxiters : Positive-Integer 1000000]
+                          #:fix-threshold
+                          [fix-threshold : Positive-Real 0.0000001]
+                          #:alpha [alpha : Positive-Real 0.0005])
+  : (Listof Flonum)
+  (define m (length xs))
+
+  (let loop ([iter 0]
+             [last-err +inf.0]
+             [theta : (Listof Flonum) (make-list (add1 degree) 0.5)])
+    (define (h-theta [x : Flonum]) : Flonum
+      (flsum
+       (for/list ([theta-i (in-list theta)]
+                  [power (in-naturals)])
+         (* theta-i (flexpt x (fl power))))))
+
+    (define theta/new : (Listof Flonum)
+      (for/list ([theta-i (in-list theta)]
+                 [power (in-naturals)])
+        (- theta-i
+           (* (/ alpha m)
+              (flsum (for/list ([x (in-list xs)]
+                                [y (in-list ys)])
+                       (* (- (h-theta x) y)
+                          (flexpt x (fl power)))))))))
+
+    (match-define (list zipped _ _) (zip (map h-theta xs) ys))
+    (define err (apply sse zipped))
+    ;; (assert (< err last-err))
+    (if (or (< (- last-err err) fix-threshold) (>= iter maxiters))
+        theta/new
+        (loop (+ iter 1) err theta/new))))
+
+
 (module+ test
   (require typed/rackunit)
   (define-syntax-rule (check-~ x y threshold)
@@ -87,26 +125,26 @@
   (define ~-threshold 0.01)
   (define xs (map fl '(1 2 3 4 5 6 7 8 9 10)))
   (define ys (map fl '(1 4 9 16 25 36 49 64 81 100)))
-  (match-define-values (sq/zero-mult sq/one-mult sq/two-mult)
-                       (gradient-descent xs ys))
+  (match-define (list sq/zero-mult sq/one-mult sq/two-mult)
+                       (gradient-descent xs ys 2))
   (check-~ sq/zero-mult 0 ~-threshold)
   (check-~ sq/one-mult 0 ~-threshold)
   (check-~ sq/two-mult 1 ~-threshold)
 
   (define xs*2 : Flonums (map (λ ([x : Nonnegative-Flonum]) : Nonnegative-Flonum
                                  (* x 2)) xs))
-  (match-define-values (double/zero-mult double/one-mult double/two-mult)
-                       (gradient-descent xs xs*2))
+  (match-define (list double/zero-mult double/one-mult double/two-mult)
+                       (gradient-descent xs xs*2 2))
   (check-~ double/zero-mult 0 ~-threshold)
   (check-~ double/one-mult 2 ~-threshold)
   (check-~ double/two-mult 0 ~-threshold)
 
   (define ys*2 : Flonums (map (λ ([x : Nonnegative-Flonum]) : Nonnegative-Flonum
                                  (* x 2)) ys))
-  (match-define-values (double-sq/zero-mult
+  (match-define (list double-sq/zero-mult
                         double-sq/one-mult
                         double-sq/two-mult)
-                       (gradient-descent xs ys*2))
+                       (gradient-descent xs ys*2 2))
   (check-~ double-sq/zero-mult 0 ~-threshold)
   (check-~ double-sq/one-mult 0 ~-threshold)
   (check-~ double-sq/two-mult 2 ~-threshold))
