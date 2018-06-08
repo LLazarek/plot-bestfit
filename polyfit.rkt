@@ -76,24 +76,33 @@
         (loop theta-0/new theta-1/new theta-2/new err))))
 
 (module+ test
-  (define xs (map fl '(1
-                       2
-                       3
-                       4
-                       5
-                       6
-                       7
-                       8
-                       9
-                       10)))
+  (require typed/rackunit)
+  (define-syntax-rule (check-~ x y threshold)
+    (check-true (< (abs (- x y)) threshold)))
+  (define ~-threshold 0.01)
+  (define xs (map fl '(1 2 3 4 5 6 7 8 9 10)))
+  (define ys (map fl '(1 4 9 16 25 36 49 64 81 100)))
+  (match-define-values (sq/zero-mult sq/one-mult sq/two-mult)
+                       (gradient-descent xs ys))
+  (check-~ sq/zero-mult 0 ~-threshold)
+  (check-~ sq/one-mult 0 ~-threshold)
+  (check-~ sq/two-mult 1 ~-threshold)
 
-  (define ys (map fl '(1
-                       4
-                       9
-                       16
-                       25
-                       36
-                       49
-                       64
-                       81
-                       100))))
+  (define xs*2 : Flonums (map (λ ([x : Nonnegative-Flonum]) : Nonnegative-Flonum
+                                 (* x 2)) xs))
+  (match-define-values (double/zero-mult double/one-mult double/two-mult)
+                       (gradient-descent xs xs*2))
+  (check-~ double/zero-mult 0 ~-threshold)
+  (check-~ double/one-mult 2 ~-threshold)
+  (check-~ double/two-mult 0 ~-threshold)
+
+  (define ys*2 : Flonums (map (λ ([x : Nonnegative-Flonum]) : Nonnegative-Flonum
+                                 (* x 2)) ys))
+  (match-define-values (double-sq/zero-mult
+                        double-sq/one-mult
+                        double-sq/two-mult)
+                       (gradient-descent xs ys*2))
+  (check-~ double-sq/zero-mult 0 ~-threshold)
+  (check-~ double-sq/one-mult 0 ~-threshold)
+  (check-~ double-sq/two-mult 2 ~-threshold)
+  )
