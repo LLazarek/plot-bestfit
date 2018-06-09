@@ -152,28 +152,90 @@ i.e. one more than the degree to fit."))
   (define-syntax-rule (check-~ x y threshold)
     (check-true (< (abs (- x y)) threshold)))
   (define ~-threshold 0.01)
-  (define xs (map fl '(1 2 3 4 5 6 7 8 9 10)))
-  (define ys (map fl '(1 4 9 16 25 36 49 64 81 100)))
+
+
+  (define xs : Flonums
+    (drop (build-list 11 fl) 1))
+
+  (define xs^2 : Flonums
+    (map (λ ([x : Nonnegative-Flonum]) : Nonnegative-Flonum
+            (* x x))
+         xs))
   (match-define (list sq/zero-mult sq/one-mult sq/two-mult)
-                       (gradient-descent xs ys 2))
+    (gradient-descent xs xs^2 2 #:guess '(0.2 0.2 0.7)))
   (check-~ sq/zero-mult 0 ~-threshold)
   (check-~ sq/one-mult 0 ~-threshold)
   (check-~ sq/two-mult 1 ~-threshold)
 
-  (define xs*2 : Flonums (map (λ ([x : Nonnegative-Flonum]) : Nonnegative-Flonum
-                                 (* x 2)) xs))
+
+  (define xs*2 : Flonums
+    (map (λ ([x : Nonnegative-Flonum]) : Nonnegative-Flonum
+            (* x 2))
+         xs))
   (match-define (list double/zero-mult double/one-mult double/two-mult)
-                       (gradient-descent xs xs*2 2))
+    (gradient-descent xs xs*2 2 #:guess '(0.2 1.5 0.2)))
   (check-~ double/zero-mult 0 ~-threshold)
   (check-~ double/one-mult 2 ~-threshold)
   (check-~ double/two-mult 0 ~-threshold)
 
-  (define ys*2 : Flonums (map (λ ([x : Nonnegative-Flonum]) : Nonnegative-Flonum
-                                 (* x 2)) ys))
+
+  (define xs^2*2 : Flonums
+    (map (λ ([x : Nonnegative-Flonum]) : Nonnegative-Flonum
+            (* x 2))
+         xs^2))
   (match-define (list double-sq/zero-mult
                         double-sq/one-mult
                         double-sq/two-mult)
-                       (gradient-descent xs ys*2 2))
+    (gradient-descent xs xs^2*2 2 #:guess '(0.2 0.2 1.5)))
   (check-~ double-sq/zero-mult 0 ~-threshold)
   (check-~ double-sq/one-mult 0 ~-threshold)
-  (check-~ double-sq/two-mult 2 ~-threshold))
+  (check-~ double-sq/two-mult 2 ~-threshold)
+
+
+  (define ~-threshold/higher 0.2)
+  (define xs^3 :  Flonums
+    (map (λ ([x : Nonnegative-Flonum]) : Nonnegative-Flonum
+            (* x x x))
+         xs))
+  (match-define (list cube/zero-mult
+                      cube/one-mult
+                      cube/two-mult
+                      cube/three-mult)
+    (gradient-descent/auto-tune xs xs^3 3
+                                #:guess '(0.2 0.2 0.3 0.7)))
+  (check-~ cube/zero-mult 0 ~-threshold/higher)
+  (check-~ cube/one-mult 0 ~-threshold/higher)
+  (check-~ cube/two-mult 0 ~-threshold/higher)
+  (check-~ cube/three-mult 1 ~-threshold/higher)
+
+  (define xs^3*17 :  Flonums
+    (map (λ ([x : Nonnegative-Flonum]) : Nonnegative-Flonum
+            (* 17 x))
+         xs^3))
+  (match-define (list cube17/zero-mult
+                      cube17/one-mult
+                      cube17/two-mult
+                      cube17/three-mult)
+    (gradient-descent/auto-tune xs xs^3*17 3
+                                #:guess '(0.2 0.2 0.3 5.0)))
+  (check-~ cube17/zero-mult 0 ~-threshold/higher)
+  (check-~ cube17/one-mult 0 ~-threshold/higher)
+  (check-~ cube17/two-mult 0 ~-threshold/higher)
+  (check-~ cube17/three-mult 17 ~-threshold/higher)
+
+  (define xs^4 :  Flonums
+    (map (λ ([x : Nonnegative-Flonum]) : Nonnegative-Flonum
+            (* x x x x))
+         xs))
+  (match-define (list quad/zero-mult
+                      quad/one-mult
+                      quad/two-mult
+                      quad/three-mult
+                      quad/four-mult)
+    (gradient-descent/auto-tune xs xs^4 4
+                                #:guess '(0.2 0.2 0.1 -0.2 0.7)))
+  (check-~ quad/zero-mult 0 ~-threshold/higher)
+  (check-~ quad/one-mult 0 ~-threshold/higher)
+  (check-~ quad/two-mult 0 ~-threshold/higher)
+  (check-~ quad/three-mult 0 ~-threshold/higher)
+  (check-~ quad/four-mult 1 ~-threshold/higher))
