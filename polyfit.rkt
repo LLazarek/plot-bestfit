@@ -31,55 +31,6 @@
   (define sses/summed (flsum sses))
   (flsqrt sses/summed))
 
-(define (gradient-descent/degree-2 [xs : Flonums]
-                                   [ys : Flonums]
-                                   [maxiters : Positive-Integer 1000000]
-                                   #:fix-threshold
-                                   [fix-threshold : Positive-Real 0.0000001]
-                                   #:alpha [alpha : Positive-Real 0.0005])
-  : (values Flonum Flonum Flonum)
-  (define m (length xs))
-
-  (let loop ([iter 0]
-             [last-err +inf.0]
-             [theta-0 0.5]
-             [theta-1 0.5]
-             [theta-2 0.5])
-    (define (h-theta [x : Flonum]) : Flonum
-      (+ (* theta-0 (expt x 0))
-         (* theta-1 (expt x 1))
-         (* theta-2 (expt x 2))))
-
-    (define theta-0/new
-      (- theta-0
-         (* (/ alpha m)
-            (flsum (for/list ([x (in-list xs)]
-                              [y (in-list ys)])
-                     (* (- (h-theta x) y)
-                        (flexpt x (fl 0))))))))
-    (define theta-1/new
-      (- theta-1
-         (* (/ alpha m)
-            (flsum (for/list ([x (in-list xs)]
-                              [y (in-list ys)])
-                     (* (- (h-theta x) y)
-                        (flexpt x (fl 1))))))))
-    (define theta-2/new
-      (- theta-2
-         (* (/ alpha m)
-            (flsum (for/list ([x (in-list xs)]
-                              [y (in-list ys)])
-                     (* (- (h-theta x) y)
-                        (flexpt x (fl 2))))))))
-
-
-    (match-define (list zipped _ _) (zip (map h-theta xs) ys))
-    (define err (apply sse zipped))
-    (assert (< err last-err))
-    (if (or (< (- last-err err) fix-threshold) (>= iter maxiters))
-        (values theta-0 theta-1 theta-2)
-        (loop (+ iter 1) err theta-0/new theta-1/new theta-2/new))))
-
 (define (random-list [len : Positive-Integer]) : (Listof Flonum)
   (define (random/-1->1 [_ : Any]) : Flonum
     (fl (/ (- (random 200) 100) 100.)))
