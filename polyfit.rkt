@@ -132,6 +132,20 @@ i.e. one more than the degree to fit."))
                theta/new)
         (loop (+ iter 1) err theta/new))))
 
+(define (gradient-descent/auto-tune [xs : Flonums]
+                                    [ys : Flonums]
+                                    [degree : Nonnegative-Integer]
+                                    #:fix-threshold
+                                    [fix-threshold : Positive-Real 0.0000001]
+                                    #:guess
+                                    [theta-guess : (Listof Flonum) empty])
+  : (Listof Flonum)
+  ;; Hack: Higher-degree polynomials seem to do better with smaller alphas
+  (gradient-descent xs ys degree
+                    #:alpha (* 5 (expt 100 (- degree)))
+                    #:fix-threshold fix-threshold
+                    #:guess theta-guess))
+
 
 (module+ test
   (require typed/rackunit)
