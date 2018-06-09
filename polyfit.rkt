@@ -125,11 +125,19 @@ i.e. one more than the degree to fit."))
     (map (λ ([x : Nonnegative-Flonum]) : Nonnegative-Flonum
             (* x 2))
          xs))
-  (match-define (list double/zero-mult double/one-mult double/two-mult)
+  (match-define (list double/zero-mult
+                      double/one-mult
+                      double/two-mult)
     (gradient-descent xs xs*2 2 #:guess '(0.2 1.5 0.2)))
   (check-~ double/zero-mult 0 ~-threshold)
   (check-~ double/one-mult 2 ~-threshold)
   (check-~ double/two-mult 0 ~-threshold)
+
+  (match-define (list double^1/zero-mult
+                      double^1/one-mult)
+    (gradient-descent/auto-tune xs xs*2 1 #:guess '(0.2 1.5)))
+  (check-~ double^1/zero-mult 0 ~-threshold)
+  (check-~ double^1/one-mult 2 ~-threshold)
 
 
   (define xs^2*2 : Flonums
