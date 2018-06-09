@@ -12,7 +12,8 @@
          Fit try-fits best-fit
          fit->string fit->fun)
 
-(require plot/no-gui math/flonum)
+(require plot/no-gui math/flonum
+         "polyfit.rkt")
 
 ;; math from http://mathworld.wolfram.com/LeastSquaresFitting.html
 
@@ -22,9 +23,15 @@
   (->* (Flonums Flonums)
        ((Option (Listof Flonum)))
        (Values renderer2d renderer2d renderer2d)))
+(define-type Grapher/poly
+  (->* (Flonums Flonums Positive-Integer)
+       ((Option (Listof Flonum)))
+       (Values renderer2d renderer2d renderer2d)))
 
 (define-type Fitter (-> Flonums Flonums (-> Real Real)))
+(define-type Fitter/poly (-> Flonums Flonums Positive-Integer (-> Real Real)))
 (define-type Parameterizer (-> Real Real (-> Real Real)))
+(define-type Parameterizer* (-> (Listof Real) (-> Real Real)))
 
 
 (: graph/gen : (-> (Listof Nonnegative-Flonum) (Listof Nonnegative-Flonum)
@@ -194,6 +201,37 @@
 (: graph/power : Grapher)
 (define (graph/power pts-x pts-y [error #f])
   (graph/gen pts-x pts-y error power-fit))
+
+
+;; --------------------
+;; | Polynomial fit
+
+;; See polyfit.rkt
+(: poly-fit-params : (-> Flonums Flonums Positive-Integer (Listof Real)))
+(define (poly-fit-params pts-x pts-y degree)
+  (gradient-descent/auto-tune pts-x pts-y degree))
+
+(: poly-fit/with-params : Parameterizer*)
+(define (poly-fit/with-params coeffs)
+  (lambda ([x : Real])
+    (define fx (fl x))
+    (define vals : (Listof Real)
+      (for/list ([c : Real (in-list coeffs)]
+                 [pow : Natural (in-naturals)])
+        (* c (flexpt fx (fl pow)))))
+    (apply + vals)))
+
+(: poly-fit : Fitter/poly)
+(define (poly-fit pts-x pts-y degree)
+  (define coeffs (poly-fit-params pts-x pts-y degree))
+  (poly-fit/with-params coeffs))
+
+(: graph/poly : Grapher/poly)
+(define (graph/poly pts-x pts-y degree [error #f])
+  (define (poly-fit/this-degree [pts-x : Flonums]
+                                [pts-y : Flonums])
+    (poly-fit pts-x pts-y degree))
+  (graph/gen pts-x pts-y error poly-fit/this-degree))
 
 
 ;; --------------------
