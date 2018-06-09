@@ -80,20 +80,33 @@
         (values theta-0 theta-1 theta-2)
         (loop (+ iter 1) err theta-0/new theta-1/new theta-2/new))))
 
+(define (random-list [len : Positive-Integer]) : (Listof Flonum)
+  (define (random/-1->1 [_ : Any]) : Flonum
+    (fl (/ (- (random 200) 100) 100.)))
+  (build-list len random/-1->1))
 
+;; If no theta-guess provided then a set initial values is randomly chosen
 (define (gradient-descent [xs : Flonums]
                           [ys : Flonums]
                           [degree : Nonnegative-Integer]
-                          [maxiters : Positive-Integer 1000000]
+                          [maxiters : Positive-Integer 300000]
                           #:fix-threshold
                           [fix-threshold : Positive-Real 0.0000001]
-                          #:alpha [alpha : Positive-Real 0.0005])
+                          #:alpha [alpha : Positive-Real 0.0005]
+                          #:regularize [reg-λ : Nonnegative-Real 0.0]
+                          #:guess [theta-guess : (Listof Flonum) empty])
   : (Listof Flonum)
   (define m (length xs))
+  (define theta-init (if (empty? theta-guess)
+                         (random-list (add1 degree))
+                         theta-guess))
+  (unless (= (length theta-init) (add1 degree))
+    (error "Coefficient guess must provide a value for each coefficient,
+i.e. one more than the degree to fit."))
 
-  (let loop ([iter 0]
+  (let loop ([iter 1]
              [last-err +inf.0]
-             [theta : (Listof Flonum) (make-list (add1 degree) 0.5)])
+             [theta : (Listof Flonum) theta-init])
     (define (h-theta [x : Flonum]) : Flonum
       (flsum
        (for/list ([theta-i (in-list theta)]
@@ -103,18 +116,20 @@
     (define theta/new : (Listof Flonum)
       (for/list ([theta-i (in-list theta)]
                  [power (in-naturals)])
-        (- theta-i
-           (* (/ alpha m)
-              (flsum (for/list ([x (in-list xs)]
-                                [y (in-list ys)])
-                       (* (- (h-theta x) y)
-                          (flexpt x (fl power)))))))))
+        (fl (- (* theta-i
+                  (- 1 (/ (* alpha reg-λ) m)))
+               (* (/ alpha m)
+                  (flsum (for/list ([x (in-list xs)]
+                                    [y (in-list ys)])
+                           (* (- (h-theta x) y)
+                              (flexpt x (fl power))))))))))
 
     (match-define (list zipped _ _) (zip (map h-theta xs) ys))
     (define err (apply sse zipped))
-    ;; (assert (< err last-err))
-    (if (or (< (- last-err err) fix-threshold) (>= iter maxiters))
-        theta/new
+    (if (or (< (abs (- last-err err)) fix-threshold) (>= iter maxiters))
+        (begin (printf "Last iter: ~v; err = ~v (last = ~v)\n"
+                       iter err last-err)
+               theta/new)
         (loop (+ iter 1) err theta/new))))
 
 
