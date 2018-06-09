@@ -97,6 +97,8 @@ i.e. one more than the degree to fit."))
                     #:fix-threshold fix-threshold
                     #:guess theta-guess))
 
+(provide gradient-descent
+         gradient-descent/auto-tune)
 
 (module+ test
   (require typed/rackunit)
