@@ -70,6 +70,11 @@
        len))
   (values offset slope))
 
+(: linear-fit-params/list : (-> Flonums Flonums (List Real Real)))
+(define (linear-fit-params/list pts-x pts-y)
+  (define-values (offset slope) (linear-fit-params pts-x pts-y))
+  (list offset slope))
+
 (: linear-fit/with-params : Parameterizer)
 (define (linear-fit/with-params offset slope)
   (lambda ([x : Real]) (+ offset (* slope (fl x)))))
@@ -104,6 +109,11 @@
   (define b (/ (- (* Σy Σxylny) (* Σxy Σylny))
                ΣyΣx^2y-Σxy^2))
   (values (exp a) b))
+
+(: exp-fit-params/list : (-> Flonums Flonums (List Real Real)))
+(define (exp-fit-params/list pts-x pts-y)
+  (define-values (a b) (exp-fit-params pts-x pts-y))
+  (list a b))
 
 (: exp-fit/with-params : Parameterizer)
 (define (exp-fit/with-params coeff exp-coeff)
@@ -145,6 +155,11 @@
 
   (values a b))
 
+(: log-fit-params/list : (-> Flonums Flonums (List Real Real)))
+(define (log-fit-params/list pts-x pts-y)
+  (define-values (a b) (log-fit-params pts-x pts-y))
+  (list a b))
+
 (: log-fit/with-params : Parameterizer)
 (define (log-fit/with-params offset coeff)
   (lambda ([x : Real])
@@ -182,6 +197,11 @@
                (- (* n Σlnx^2) (sqr Σlnx))))
   (define a (/ (- Σlny (* b Σlnx)) n))
   (values a b))
+
+(: power-fit-params/list : (-> Flonums Flonums (List Real Real)))
+(define (power-fit-params/list pts-x pts-y)
+  (define-values (a b) (power-fit-params pts-x pts-y))
+  (list a b))
 
 (: power-fit/with-params : Parameterizer)
 (define (power-fit/with-params coeff exp-coeff)
@@ -259,55 +279,70 @@
               (map f pts-x)
               pts-y)))
 
-(define-struct Fit ([a : Real] [b : Real] [sse : Real] [type : Symbol]))
+(struct Fit ([params : (Listof Real)] [sse : Real] [type : Symbol]))
 
 (: try-fits : (-> Flonums Flonums (Listof Fit)))
-(define (try-fits pts-x pts-y)
-  (define fits-to-try `((linear ,linear-fit-params ,linear-fit/with-params)
-                        (exp ,exp-fit-params ,exp-fit/with-params)
-                        (log ,log-fit-params ,log-fit/with-params)
-                        (power ,power-fit-params ,power-fit/with-params)))
-  (for/fold ([fits : (Listof Fit) empty])
-      ([fit-to-try fits-to-try])
-    (let*-values ([(type) (first fit-to-try)]
-                  [(get-params) (second fit-to-try)]
-                  [(fit/with-params) (third fit-to-try)]
-                  [(param-a param-b) (get-params pts-x pts-y)]
-                  [(fun) (fit/with-params param-a param-b)]
-                  [(sse) (sse pts-x pts-y fun)])
-      (cons (make-Fit param-a param-b sse type) fits))))
+(define (try-fits pts-x pts-y
+                  #:poly-max-degree [poly-max-degree 0])
+  (define fits-to-try `((linear ,linear-fit-params/list ,linear-fit/with-params)
+                        (exp ,exp-fit-params/list ,exp-fit/with-params)
+                        (log ,log-fit-params/list ,log-fit/with-params)
+                        (power ,power-fit-params/list ,power-fit/with-params)))
+  (define fits
+    (for/fold ([fits : (Listof Fit) empty])
+              ([fit-to-try fits-to-try])
+      (let* ([type (first fit-to-try)]
+             [get-params (second fit-to-try)]
+             [fit/with-params (third fit-to-try)]
+             [params (get-params pts-x pts-y)]
+             [fun (apply fit/with-params params)]
+             [sse (sse pts-x pts-y fun)])
+        (cons (Fit params sse type) fits))))
+  (define fits/with-poly
+    (for/fold ([fits : (Listof Fit) fits])
+              ([degree : Positive-Integer (in-range 1 poly-max-degree)])
+      (let* ([params (poly-fit-params pts-x pts-y degree)]
+             [fun (poly-fit/with-params params)]
+             [sse (sse pts-x pts-y fun)])
+        (cons (Fit params sse 'poly) fits))))
+  fits/with-poly)
 
 (: fit-format-str : (-> Symbol String))
 (define (fit-format-str type)
-  (string-append
-   (match type
-     ('linear "~a + ~a*x")
-     ('exp "~a*e^(~a*x)")
-     ('log "~a + ~a*log(x)")
-     ('power "(e^~a)*(x^~a)")
-     (_ "unknown with a=~a, b=~a"))
-   " (SSE: ~a)"))
+  (match type
+    ('linear "a + b*x")
+    ('exp "a*e^(b*x)")
+    ('log "a + b*log(x)")
+    ('power "(e^a)*(x^b)")
+    ('poly "a + b*x + c*x^2 + ...")
+    (_ "unknown")))
+
 (: fit->string : (-> Fit String))
-(define (fit->string fitsum)
-  (format (fit-format-str (Fit-type fitsum))
-          (Fit-a fitsum)
-          (Fit-b fitsum)
-          (Fit-sse fitsum)))
+(define (fit->string fit)
+  (format (string-append (fit-format-str (Fit-type fit))
+                         " with a, b, ... = ~a (SSE: ~a)")
+          (Fit-params fit)
+          (Fit-sse fit)))
 
 (: fit->fun : (-> Fit (-> Real Real)))
-(define (fit->fun fitsum)
-  (define fit/with-params (match (Fit-type fitsum)
-                            ('linear linear-fit/with-params)
-                            ('exp exp-fit/with-params)
-                            ('log log-fit/with-params)
-                            ('power power-fit/with-params)))
-  (fit/with-params (Fit-a fitsum) (Fit-b fitsum)))
+(define (fit->fun fit)
+  (define type (Fit-type fit))
+  (define fit/with-params (match type
+                            ['linear linear-fit/with-params]
+                            ['exp exp-fit/with-params]
+                            ['log log-fit/with-params]
+                            ['power power-fit/with-params]))
+  (match type
+    ['poly (poly-fit/with-params (Fit-params fit))]
+    [_
+     (match-define (list a b) (Fit-params fit))
+     (fit/with-params a b)]))
 
 (: best-fit : (-> Flonums Flonums Fit))
 (define (best-fit pts-x pts-y)
-  (define summaries (try-fits pts-x pts-y))
-  (for/fold ([best-so-far (first summaries)])
-            ([fit summaries])
+  (define all-fits (try-fits pts-x pts-y))
+  (for/fold ([best-so-far (first all-fits)])
+            ([fit all-fits])
     (if (< (Fit-sse fit) (Fit-sse best-so-far))
         fit
         best-so-far)))
