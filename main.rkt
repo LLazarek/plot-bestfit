@@ -13,7 +13,7 @@
          fit->string fit->fun)
 
 (require plot/no-gui math/flonum
-         "polyfit.rkt")
+         "polyfit-closed-form.rkt")
 
 ;; math from http://mathworld.wolfram.com/LeastSquaresFitting.html
 
@@ -227,7 +227,7 @@
 ;; See polyfit.rkt
 (: poly-fit-params : (-> Flonums Flonums Positive-Integer (Listof Real)))
 (define (poly-fit-params pts-x pts-y degree)
-  (gradient-descent/auto-tune pts-x pts-y degree))
+  (polyfit pts-x pts-y degree))
 
 (: poly-fit/with-params : Parameterizer*)
 (define (poly-fit/with-params coeffs)
@@ -279,7 +279,9 @@
 
 (struct Fit ([params : (Listof Real)] [sse : Real] [type : Symbol]))
 
-(: try-fits : (-> Flonums Flonums (Listof Fit)))
+(: try-fits : (->* (Flonums Flonums)
+                   (#:poly-max-degree Natural)
+                   (Listof Fit)))
 (define (try-fits pts-x pts-y
                   #:poly-max-degree [poly-max-degree 0])
   (define fits-to-try `((linear ,linear-fit-params/list ,linear-fit/with-params)
@@ -336,11 +338,17 @@
      (match-define (list a b) (Fit-params fit))
      (fit/with-params a b)]))
 
-(: best-fit : (-> Flonums Flonums Fit))
-(define (best-fit pts-x pts-y)
-  (define all-fits (try-fits pts-x pts-y))
-  (for/fold ([best-so-far (first all-fits)])
-            ([fit all-fits])
+(: best-fit : (->* (Flonums Flonums)
+                   (#:poly-max-degree Natural)
+                   Fit))
+(define (best-fit pts-x pts-y #:poly-max-degree [poly-max-degree 0])
+  (define all-fits (try-fits pts-x pts-y #:poly-max-degree poly-max-degree))
+  (define (valid-fit [f : Fit])
+    (define sse (Fit-sse f))
+    (not (or (nan? sse) (infinite? sse))))
+  (define valid-fits (filter valid-fit all-fits))
+  (for/fold ([best-so-far (first valid-fits)])
+            ([fit (rest valid-fits)])
     (if (< (Fit-sse fit) (Fit-sse best-so-far))
         fit
         best-so-far)))
