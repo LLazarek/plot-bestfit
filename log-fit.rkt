@@ -27,14 +27,6 @@
                n))
   (values a b))
 
-(module+ test
-  (define xs/log : Flonums (map fl (range 1 500)))
-  (define ys/log : Flonums (cast (map (λ ([x : Flonum])
-                                        (+ 5 (* 2 (fllog x)))) xs/log)
-                                 Flonums))
- )
-
-
 (: log-fit-params/list : (-> Flonums Flonums (List Real Real)))
 (define (log-fit-params/list pts-x pts-y)
   (define-values (a b) (log-fit-params pts-x pts-y))
@@ -58,3 +50,12 @@
 (: graph/log : Grapher)
 (define (graph/log pts-x pts-y [error #f])
   (graph/gen pts-x pts-y error log-fit))
+
+
+;; ---------- Tests ----------
+(module+ test
+  (define xs/log : Flonums (map fl (range 1 500)))
+  (define ys/log : Flonums (cast (map (λ ([x : Flonum])
+                                        (+ 5 (* 2 (fllog x)))) xs/log)
+                                 Flonums))
+ )
