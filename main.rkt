@@ -136,23 +136,21 @@
 ;; see http://mathworld.wolfram.com/LeastSquaresFittingLogarithmic.html
 (: log-fit-params : (-> Flonums Flonums (Values Real Real)))
 (define (log-fit-params pts-x pts-y)
-  (: r* : (-> Flonum Flonum * Flonum))
-  (define r* *)
   (define n (length pts-x))
+  (define lnx (map fllog pts-x))
+  (define Σy*lnx (flsum (map fl* pts-y lnx)))
+  (define Σy (flsum pts-y))
+  (define Σlnx (flsum lnx))
+  (define lnx^2 (map sqr lnx))
+  (define Σlnx^2 (flsum lnx^2))
 
-  (define lnx   (map log pts-x))
-  (define Σylnx (Σ (map r* pts-y lnx)))
-  (define Σy    (Σ pts-y))
-  (define Σlnx  (Σ lnx))
-  (define Σx    (Σ pts-x))
+  (define b (/ (- (* n Σy*lnx)
+                  (* Σy Σlnx))
+               (- (* n Σlnx^2)
+                  (sqr Σlnx))))
 
-  (define b
-    (/ (- (* n Σylnx) (* Σy Σlnx))
-       (- (* n (sqr Σlnx)) (sqr Σlnx))))
-  (define a
-    (/ (- Σy (* b Σlnx))
-       n))
-
+  (define a (/ (- Σy (* b Σlnx))
+               n))
   (values a b))
 
 (: log-fit-params/list : (-> Flonums Flonums (List Real Real)))
