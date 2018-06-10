@@ -1,15 +1,20 @@
 #lang typed/racket
 
-(require math/matrix
-         math/flonum)
+(require "common.rkt"
+         math/matrix)
+(provide poly-fit-params
+         poly-fit/with-params
+         poly-fit
+         graph/poly)
 
 (define-type Flonums (Listof Nonnegative-Flonum))
 
 ;; See http://mathworld.wolfram.com/LeastSquaresFittingPolynomial.html
-(define (polyfit [xs : Flonums]
-                 [ys : Flonums]
-                 [degree : Positive-Integer]
-                 #:regularize [reg-λ : Nonnegative-Real 0.0])
+(define (poly-fit-params [xs : Flonums]
+                         [ys : Flonums]
+                         [degree : Positive-Integer]
+                         #:regularize [reg-λ : Nonnegative-Real 0.0])
+  : (Listof Real)
   (define n (length xs))
   (define X (vandermonde-matrix xs (add1 degree)))
   (define Y (list->matrix n 1 ys))
@@ -17,6 +22,8 @@
   (define X-bar (matrix* X^T X))
   (define Y-bar (matrix* X^T Y))
   ;; Solve X-bar * alpha = Y-bar to find coefficients
+  ;; Below is using regularized normal form solution
+  ;; alpha = (X-bar^T * X-bar + λ*I)^-1 * X-bar^T * Y-bar
 
   (define X-bar^T (matrix-transpose X-bar))
   (define X-bar^T*X-bar (matrix* X-bar^T X-bar))
@@ -28,15 +35,34 @@
                          X-bar^T
                          Y-bar)))
 
-(provide polyfit)
 
-;; todo: try
-;; Using LU decomp: http://math.oit.edu/~watermang/math_341/341_ch7/F13_341_book_sec_7-2.pdf
-;; Using Cramer's rule: https://en.wikipedia.org/wiki/Cramer%27s_rule
+(: poly-fit/with-params : Parameterizer*)
+(define (poly-fit/with-params coeffs)
+  (lambda ([x : Real])
+    (define fx (fl x))
+    (define vals : (Listof Real)
+      (for/list ([c : Real (in-list coeffs)]
+                 [pow : Natural (in-naturals)])
+        (* c (flexpt fx (fl pow)))))
+    (apply + vals)))
 
-;; I could also consider making my gradient descent program use
-;; matrices instead to be fast, since it seems to work pretty ok but
-;; is way too slow
+(: poly-fit : Fitter/poly)
+(define (poly-fit pts-x pts-y degree)
+  (define coeffs (poly-fit-params pts-x pts-y degree))
+  (poly-fit/with-params coeffs))
+
+(: graph/poly : Grapher/poly)
+(define (graph/poly pts-x pts-y degree [error #f])
+  (define (poly-fit/this-degree [pts-x : Flonums]
+                                [pts-y : Flonums])
+    (poly-fit pts-x pts-y degree))
+  (graph/gen pts-x pts-y error poly-fit/this-degree))
+
+;; maybe oneday todos:
+;; Try using LU decomp:
+;; http://math.oit.edu/~watermang/math_341/341_ch7/F13_341_book_sec_7-2.pdf
+;; Try using Cramer's rule:
+;; https://en.wikipedia.org/wiki/Cramer%27s_rule
 
 (module+ test
   (require typed/rackunit)
@@ -53,7 +79,7 @@
             (* x x))
          xs))
   (match-define (list sq/zero-mult sq/one-mult sq/two-mult)
-    (polyfit xs xs^2 2))
+    (poly-fit-params xs xs^2 2))
   (check-~ sq/zero-mult 0 ~-threshold)
   (check-~ sq/one-mult 0 ~-threshold)
   (check-~ sq/two-mult 1 ~-threshold)
@@ -66,14 +92,14 @@
   (match-define (list double/zero-mult
                       double/one-mult
                       double/two-mult)
-    (polyfit xs xs*2 2))
+    (poly-fit-params xs xs*2 2))
   (check-~ double/zero-mult 0 ~-threshold)
   (check-~ double/one-mult 2 ~-threshold)
   (check-~ double/two-mult 0 ~-threshold)
 
   (match-define (list double^1/zero-mult
                       double^1/one-mult)
-    (polyfit xs xs*2 1))
+    (poly-fit-params xs xs*2 1))
   (check-~ double^1/zero-mult 0 ~-threshold)
   (check-~ double^1/one-mult 2 ~-threshold)
 
@@ -85,7 +111,7 @@
   (match-define (list double-sq/zero-mult
                         double-sq/one-mult
                         double-sq/two-mult)
-    (polyfit xs xs^2*2 2))
+    (poly-fit-params xs xs^2*2 2))
   (check-~ double-sq/zero-mult 0 ~-threshold)
   (check-~ double-sq/one-mult 0 ~-threshold)
   (check-~ double-sq/two-mult 2 ~-threshold)
@@ -100,7 +126,7 @@
                       cube/one-mult
                       cube/two-mult
                       cube/three-mult)
-    (polyfit xs xs^3 3))
+    (poly-fit-params xs xs^3 3))
   (check-~ cube/zero-mult 0 ~-threshold/higher)
   (check-~ cube/one-mult 0 ~-threshold/higher)
   (check-~ cube/two-mult 0 ~-threshold/higher)
@@ -114,7 +140,7 @@
                       cube17/one-mult
                       cube17/two-mult
                       cube17/three-mult)
-    (polyfit xs xs^3*17 3))
+    (poly-fit-params xs xs^3*17 3))
   (check-~ cube17/zero-mult 0 ~-threshold/higher)
   (check-~ cube17/one-mult 0 ~-threshold/higher)
   (check-~ cube17/two-mult 0 ~-threshold/higher)
@@ -129,7 +155,7 @@
                       quad/two-mult
                       quad/three-mult
                       quad/four-mult)
-    (polyfit xs xs^4 4))
+    (poly-fit-params xs xs^4 4))
   (check-~ quad/zero-mult 0 ~-threshold/higher)
   (check-~ quad/one-mult 0 0.5)
   (check-~ quad/two-mult 0 0.25)
