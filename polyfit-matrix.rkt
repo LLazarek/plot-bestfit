@@ -8,7 +8,8 @@
 ;; See http://mathworld.wolfram.com/LeastSquaresFittingPolynomial.html
 (define (polyfit [xs : Flonums]
                  [ys : Flonums]
-                 [degree : Positive-Integer])
+                 [degree : Positive-Integer]
+                 #:regularize [reg-λ : Nonnegative-Real 0.0])
   (define n (length xs))
   (define X (vandermonde-matrix xs (add1 degree)))
   (define Y (list->matrix n 1 ys))
@@ -19,6 +20,9 @@
 
   (define X-bar^T (matrix-transpose X-bar))
   (define X-bar^T*X-bar (matrix* X-bar^T X-bar))
+  (define-values (r c) (matrix-shape X-bar^T*X-bar))
+  (define X-bar^T*X-bar+λ (matrix+ X-bar^T*X-bar
+                                   (identity-matrix r reg-λ)))
   (define X-bar^T*X-bar^-1 (matrix-inverse X-bar^T*X-bar))
   (matrix->list (matrix* X-bar^T*X-bar^-1
                          X-bar^T
@@ -40,7 +44,7 @@
 
 
   ;; (define xs : Flonums (drop (build-list 1000 fl) 1))
-  (define xs : Flonums (drop (build-list 11 fl) 1))
+  (define xs : Flonums (build-list 11 fl))
 
   (define xs^2 : Flonums
     (map (λ ([x : Nonnegative-Flonum]) : Nonnegative-Flonum
@@ -125,7 +129,7 @@
                       quad/four-mult)
     (polyfit xs xs^4 4))
   (check-~ quad/zero-mult 0 ~-threshold/higher)
-  (check-~ quad/one-mult 0 ~-threshold/higher)
-  (check-~ quad/two-mult 0 ~-threshold/higher)
+  (check-~ quad/one-mult 0 0.5)
+  (check-~ quad/two-mult 0 0.25)
   (check-~ quad/three-mult 0 ~-threshold/higher)
   (check-~ quad/four-mult 1 ~-threshold/higher))
