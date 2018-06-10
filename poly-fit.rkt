@@ -47,7 +47,6 @@
              (> degree 2))
         (expt 10 (- (fllogb 10.0 (matrix-ref X^T*X (sub1 r) (sub1 c))) 16))
         reg-λ))
-  (displayln reg-matrix-diag)
   (define reg-matrix (almost-identity-matrix r reg-matrix-diag))
   (define X^T*X+λ (matrix+ X^T*X reg-matrix))
   (define X^T*X^-1 (matrix-inverse X^T*X+λ))
