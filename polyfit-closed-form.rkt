@@ -28,6 +28,8 @@
                          X-bar^T
                          Y-bar)))
 
+(provide polyfit)
+
 ;; todo: try
 ;; Using LU decomp: http://math.oit.edu/~watermang/math_341/341_ch7/F13_341_book_sec_7-2.pdf
 ;; Using Cramer's rule: https://en.wikipedia.org/wiki/Cramer%27s_rule
