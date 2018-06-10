@@ -54,8 +54,11 @@
 
 ;; ---------- Tests ----------
 (module+ test
+  (require "test-common.rkt")
   (define xs/log : Flonums (map fl (range 1 500)))
   (define ys/log : Flonums (cast (map (λ ([x : Flonum])
                                         (+ 5 (* 2 (fllog x)))) xs/log)
                                  Flonums))
- )
+  (define-values (a b) (log-fit-params xs/log ys/log))
+  (check-≈ a 5 0.0001)
+  (check-≈ b 2 0.0001))
