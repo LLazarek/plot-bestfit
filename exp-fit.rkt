@@ -42,3 +42,19 @@
 (: graph/exponential : Grapher)
 (define (graph/exponential pts-x pts-y [error #f])
   (graph/gen pts-x pts-y error exp-fit))
+
+
+;; ---------- Tests ----------
+(module+ test
+  (require "test-common.rkt")
+  (define xs/exp : Flonums
+    (map (λ ([x : Integer]) : Nonnegative-Flonum
+                 (define res (fl (/ x 100.0)))
+                 (if (negative? res) (error "") res))
+              (range 1 500)))
+  (define ys/exp : Flonums (cast (map (λ ([x : Flonum])
+                                        (* 5 (exp (* 7.2 x)))) xs/exp)
+                                    Flonums))
+  (define-values (a b) (exp-fit-params xs/exp ys/exp))
+  (check-≈ a 5 0.0001)
+  (check-≈ b 7.2 0.0001))

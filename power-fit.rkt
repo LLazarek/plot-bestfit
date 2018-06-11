@@ -45,3 +45,16 @@
 (: graph/power : Grapher)
 (define (graph/power pts-x pts-y [error #f])
   (graph/gen pts-x pts-y error power-fit))
+
+
+;; ---------- Tests ----------
+(module+ test
+  (require "test-common.rkt")
+  (define xs/power : Flonums (map fl (range 1 500)))
+  (define ys/power : Flonums (cast (map (λ ([x : Flonum])
+                                          (* (exp 0.5) (expt x 0.2)))
+                                        xs/power)
+                                    Flonums))
+  (define-values (a b) (power-fit-params xs/power ys/power))
+  (check-≈ a 0.5 0.0001)
+  (check-≈ b 0.2 0.0001))

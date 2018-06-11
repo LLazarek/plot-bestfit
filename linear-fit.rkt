@@ -41,3 +41,15 @@
 (: graph/linear : Grapher)
 (define (graph/linear pts-x pts-y [error #f])
   (graph/gen pts-x pts-y error linear-fit))
+
+
+;; ---------- Tests ----------
+(module+ test
+  (require "test-common.rkt")
+  (define xs/linear : Flonums (map fl (range 1 500)))
+  (define ys/linear : Flonums (cast (map (λ ([x : Flonum])
+                                        (+ 5 (* 7.2 x))) xs/linear)
+                                    Flonums))
+  (define-values (a b) (linear-fit-params xs/linear ys/linear))
+  (check-≈ a 5 0.0001)
+  (check-≈ b 7.2 0.0001))
