@@ -58,7 +58,7 @@
         (cons (Fit params sse type) fits))))
   (define fits/with-poly
     (for/fold ([fits : (Listof Fit) fits])
-              ([degree : Positive-Integer (in-range 1 poly-max-degree)])
+              ([degree : Positive-Integer (in-range 2 (add1 poly-max-degree))])
       (let* ([params (poly-fit-params pts-x pts-y degree)]
              [fun (poly-fit/with-params params)]
              [sse (sse pts-x pts-y fun)])
