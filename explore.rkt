@@ -6,7 +6,8 @@
          "log-fit.rkt"
          "power-fit.rkt"
          "poly-fit.rkt")
-(provide Fit try-fits best-fit
+(provide Fit Fit-params Fit-sse Fit-type
+         try-fits best-fit
          fit->string fit->fun)
 
 ;; --------------------
