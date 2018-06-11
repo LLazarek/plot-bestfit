@@ -42,6 +42,11 @@ Bestfit is a library for calculating lines of best fit using
               @defproc[(graph/power [xs (Listof Nonnegative-Flonum)]
                                     [ys (Listof Nonnegative-Flonum)]
                                     [errors (U #f (Listof Flonum)) #f])
+                       (Values renderer2d? renderer2d? renderer2d?)]
+	      @defproc[(graph/poly [xs (Listof Nonnegative-Flonum)]
+                                   [ys (Listof Nonnegative-Flonum)]
+				   [degree Positive-Integer]
+                                   [errors (U #f (Listof Flonum)) #f])
                        (Values renderer2d? renderer2d? renderer2d?)])]{
 
 Uses @racket[linear-fit], @racket[exp-fit], @racket[log-fit], @racket[power-fit], to generate three
@@ -77,6 +82,10 @@ is the percentage error on each y coordinate.
                       (-> Nonnegative-Flonum Real)]
               @defproc[(power-fit [xs (Listof Nonnegative-Flonum)]
                                   [ys (Listof Nonnegative-Flonum)])
+                       (-> Nonnegative-Flonum Real)]
+	      @defproc[(poly-fit [xs (Listof Nonnegative-Flonum)]
+                                 [ys (Listof Nonnegative-Flonum)]
+				 [degree Positive-Integer])
                        (-> Nonnegative-Flonum Real)])]{
 
 
@@ -87,9 +96,12 @@ generate a best fit function of the given type.
        (line 10.0)
        (line 12.0)]
 
-@defproc[(linear-fit-params [xs (Listof Nonnegative-Flonum)]
-                            [ys (Listof Nonnegative-Flonum)])
-          (Values Real Real)]{
+@deftogether[(@defproc[(linear-fit-params [xs (Listof Nonnegative-Flonum)]
+                                          [ys (Listof Nonnegative-Flonum)])
+                       (Values Real Real)]
+	      @defproc[(linear-fit-params/list [xs (Listof Nonnegative-Flonum)]
+                                               [ys (Listof Nonnegative-Flonum)])
+                       (List Real Real)])]{
 
 Returns values @racket[_a] and @racket[_b] used to generate a best fit
 function of the form @tt{y = a + b x}.
@@ -99,9 +111,12 @@ function of the form @tt{y = a + b x}.
 }
 
 
-@defproc[(exp-fit-params [xs (Listof Nonnegative-Flonum)]
-                         [ys (Listof Nonnegative-Flonum)])
-         (Values Real Real)]{
+@deftogether[(@defproc[(exp-fit-params [xs (Listof Nonnegative-Flonum)]
+                                       [ys (Listof Nonnegative-Flonum)])
+                       (Values Real Real)]
+	      @defproc[(exp-fit-params/list [xs (Listof Nonnegative-Flonum)]
+                                            [ys (Listof Nonnegative-Flonum)])
+                       (List Real Real)])]{
 
 Returns values @racket[_A] and @racket[_B] used to generate a best fit
 function of the form @tt{y = A e^(B x)}.
@@ -111,9 +126,12 @@ function of the form @tt{y = A e^(B x)}.
 }
 
 
-@defproc[(log-fit-params [xs (Listof Nonnegative-Flonum)]
-                         [ys (Listof Nonnegative-Flonum)])
-         (Values Real Real)]{
+@deftogether[(@defproc[(log-fit-params [xs (Listof Nonnegative-Flonum)]
+                                       [ys (Listof Nonnegative-Flonum)])
+                       (Values Real Real)]
+	      @defproc[(log-fit-params/list [xs (Listof Nonnegative-Flonum)]
+                                            [ys (Listof Nonnegative-Flonum)])
+                       (List Real Real)])]{
 
 Returns values @racket[_a] and @racket[_b] used to generate a best fit
 function of the form @tt{y = a + b ln(x)}.
@@ -123,14 +141,30 @@ function of the form @tt{y = a + b ln(x)}.
 }
 
 
-@defproc[(power-fit-params [xs (Listof Nonnegative-Flonum)]
-                           [ys (Listof Nonnegative-Flonum)])
-         (Values Real Real)]{
+@deftogether[(@defproc[(power-fit-params [xs (Listof Nonnegative-Flonum)]
+                                         [ys (Listof Nonnegative-Flonum)])
+                       (Values Real Real)]
+	      @defproc[(power-fit-params/list [xs (Listof Nonnegative-Flonum)]
+                                              [ys (Listof Nonnegative-Flonum)])
+                       (List Real Real)])]{
 
 Returns values @racket[_A] and @racket[_B] used to generate a best fit
 function of the form @tt{y = A x^B}.
 
 @inter[(power-fit-params '(1.0 2.0 3.0) '(2.0 8.0 18.0))]
+
+}
+
+
+@defproc[(poly-fit-params [xs (Listof Nonnegative-Flonum)]
+                          [ys (Listof Nonnegative-Flonum)]
+			  [degree Positive-Integer])
+         (Listof Real)]{
+
+Returns values @racket[_A], @racket[_B], @racket[_C], ... used to
+generate a best fit function of the form @tt{y = A + Bx + Cx^2 + ...}.
+
+@inter[(poly-fit-params '(1.0 2.0 3.0) '(1.0 8.0 27.0) 3)]
 
 }
 
