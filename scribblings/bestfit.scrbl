@@ -170,3 +170,81 @@ generate a best fit function of the form @tt{y = A + Bx + Cx^2 + ...}.
 
 
 }
+
+
+
+@section{Fit Exploration}
+You may not know which of the above fits applies best to your data;
+these functions allow you to automatically find the best fit function
+for a given data set.
+
+@defproc[(try-fits [xs (Listof Nonnegative-Flonum)]
+                   [ys (Listof Nonnegative-Flonum)]
+		   [#:poly-max-degree poly-max-degree Natural 0])
+	 (Listof Fit)]{
+
+Try all of the above described fits on the given data, returning a
+@tt{Fit} object for each attempted fit.
+
+If @racket[poly-max-degree] is 0, do not try any polynomial fits. If
+it is some other number @tt{N}, try all polynomials from degree 2
+through @tt{N}.
+
+
+@inter[(try-fits '(1.0 2.0 3.0) '(2.0 8.0 18.0))]
+@inter[(try-fits '(1.0 2.0 3.0) '(1.0 8.0 27.0) 3)]
+
+}
+
+
+@defproc[(best-fit [xs (Listof Nonnegative-Flonum)]
+                   [ys (Listof Nonnegative-Flonum)]
+		   [#:poly-max-degree poly-max-degree Natural 0])
+	 Fit]{
+
+Try all of the above described fits on the given data, returning the
+fit with the lowest error between the fit function and the data.
+
+If @racket[poly-max-degree] is 0, do not try any polynomial fits. If
+it is some other number @tt{N}, try all polynomials from degree 2
+through @tt{N}.
+
+
+@inter[(best-fit '(1.0 2.0 3.0) '(2.0 8.0 18.0))]
+@inter[(best-fit '(1.0 2.0 3.0) '(1.0 8.0 27.0) #:poly-max-degree 3)]
+
+}
+
+@defproc[(fit->string [fit Fit])
+         String]{
+
+Returns a human-readable string representation of the given fit, along
+with its parameter values and error.
+
+
+@inter[(fit->string (best-fit '(1.0 2.0 3.0) '(2.0 8.0 18.0)))]
+
+}
+
+@defproc[(fit->fun [fit Fit])
+         String]{
+
+Return a procedure implimenting the given fit function.
+
+
+@inter[(fit->string (best-fit '(1.0 2.0 3.0) '(2.0 8.0 18.0)))]
+
+}
+
+@deftogether[(
+@defproc[(Fit-params [fit Fit]) (Listof Real)]
+@defproc[(Fit-sse [fit Fit]) Real]
+@defproc[(Fit-type [fit Fit]) Symbol]
+)]{
+
+Access relevant information (parameter values, total fit error, and
+type, respectively) about a @tt{Fit} as returned by @racket[try-fits]
+and @racket[best-fit].
+
+}
+
