@@ -14,13 +14,6 @@
   : (Matrix Real)
   (diagonal-matrix (cons 0 (make-list (sub1 size) val))))
 
-(define (pretty-display [m : (Matrix Any)])
-  (define-values (r c) (matrix-shape m))
-  (for ([row (in-range 0 r)])
-    (for ([col (in-range 0 c)])
-      (printf "~v\t" (matrix-ref m row col)))
-    (newline)))
-
 ;; See http://mathworld.wolfram.com/LeastSquaresFittingPolynomial.html
 (define (poly-fit-params [xs : Flonums]
                          [ys : Flonums]
